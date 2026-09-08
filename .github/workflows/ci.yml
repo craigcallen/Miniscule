@@ -1,0 +1,42 @@
+name: CI
+
+# Fast smoke check on PRs: an unsigned Debug build of the app so a broken
+# build/syntax error fails fast, without needing any signing secrets.
+#
+# NOTE: Miniscule's Xcode project has no dependency on GhosttyKit.xcframework
+# (it links SwiftTerm via SPM instead), so there's no Zig build step here.
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  XCODE_PROJECT: Miniscule.xcodeproj
+  XCODE_SCHEME: Miniscule
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          sudo xcode-select -switch "$LATEST/Contents/Developer"
+          xcodebuild -version
+
+      - name: SwiftLint
+        if: hashFiles('.swiftlint.yml') != ''
+        run: |
+          brew install swiftlint
+          swiftlint lint --strict
+
+      - name: Build (unsigned, debug)
+        run: |
+          xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -derivedDataPath build/dd \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
