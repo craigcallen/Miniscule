@@ -90,6 +90,11 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           echo "$CSC_LINK" | base64 --decode > $RUNNER_TEMP/cert.p12
+          if ! openssl pkcs12 -info -in $RUNNER_TEMP/cert.p12 -passin "pass:$CSC_KEY_PASSWORD" -noout -legacy 2>/dev/null && \
+             ! openssl pkcs12 -info -in $RUNNER_TEMP/cert.p12 -passin "pass:$CSC_KEY_PASSWORD" -noout 2>/dev/null; then
+            echo "::error::Decoded cert.p12 is not readable as PKCS12 with the given CSC_KEY_PASSWORD. CSC_LINK is likely truncated/corrupted (re-copy the base64 without going through a UI paste box) or CSC_KEY_PASSWORD doesn't match the exported .p12."
+            exit 1
+          fi
           security import $RUNNER_TEMP/cert.p12 -P "$CSC_KEY_PASSWORD" \
             -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
