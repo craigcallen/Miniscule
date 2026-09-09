@@ -96,6 +96,14 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: \
             -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
+      # Surfaces exactly which identities (and team IDs) the imported cert
+      # produced in the temp keychain, so a signing failure can be diagnosed
+      # as "wrong cert type" / "wrong team" vs. a partition-list/import bug
+      # instead of re-guessing from the xcodebuild error alone.
+      - name: List available signing identities
+        if: steps.signing.outputs.mode == 'signed'
+        run: security find-identity -v -p codesigning
+
       - name: Build signed app
         if: steps.signing.outputs.mode == 'signed'
         env:
