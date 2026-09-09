@@ -127,6 +127,10 @@ final class TerminalTab: Identifiable {
         terminalView.nativeBackgroundColor = .clear
         terminalView.nativeForegroundColor = theme.foreground
         terminalView.installColors(theme.makeSwiftTermColors())
+        // SwiftTerm's built-in NSScroller draws its knob from the effective appearance,
+        // not the theme color, so a dark scroller on a light custom background (or vice
+        // versa) becomes unreadable unless we force it to match here.
+        terminalView.appearance = NSAppearance(named: theme.background.isLightColor ? .aqua : .darkAqua)
     }
 }
 
@@ -159,12 +163,15 @@ enum WindowSize: String, CaseIterable, Identifiable {
     }
 
     var terminalSize: CGSize {
+        let screen = NSScreen.main?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 877)
         switch self {
-        case .mini:   return CGSize(width: 400,  height: 240)
-        case .medium: return CGSize(width: 620,  height: 420)
-        case .large:  return CGSize(width: 820,  height: 540)
+        case .mini:
+            return CGSize(width: min(400, screen.width * 0.9), height: min(240, screen.height * 0.9))
+        case .medium:
+            return CGSize(width: min(620, screen.width * 0.9), height: min(420, screen.height * 0.9))
+        case .large:
+            return CGSize(width: min(820, screen.width * 0.9), height: min(540, screen.height * 0.9))
         case .full:
-            let screen = NSScreen.main?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 877)
             let width  = min(screen.width * 0.65, 1000)
             let height = screen.height * 0.85 - 36
             return CGSize(width: width, height: height)
@@ -180,6 +187,14 @@ final class TerminalStore {
     var activeTabIndex: Int = 0
 
     var activeTab: TerminalTab { tabs[min(activeTabIndex, tabs.count - 1)] }
+
+    /// Whether the active background reads as light — used to pick toolbar chrome that
+    /// stays visible against an arbitrary theme background, independent of system
+    /// light/dark mode (a Solarized Light user wants light chrome even in system dark mode).
+    var isLightBackground: Bool {
+        let bg = currentTheme.id == "custom" ? customBackground : currentTheme.background
+        return bg.isLightColor
+    }
 
     var currentTheme: TerminalTheme {
         didSet {
@@ -433,6 +448,12 @@ struct ContentView: View {
         return scaled
     }
 
+    /// Chrome color for elements drawn directly against the terminal theme's
+    /// background (e.g. the toolbar), which is independent of system light/dark mode.
+    private func toolbarChrome(_ opacity: Double) -> SwiftUI.Color {
+        (store.isLightBackground ? SwiftUI.Color.black : SwiftUI.Color.white).opacity(opacity)
+    }
+
     private func focusActiveTab() {
         DispatchQueue.main.async {
             let tv = store.activeTab.terminalView
@@ -547,7 +568,7 @@ struct ContentView: View {
         .frame(height: 22)
         .background(
             RoundedRectangle(cornerRadius: 5)
-                .fill(isActive ? Color.white.opacity(0.12) : Color.white.opacity(0.03))
+                .fill(isActive ? toolbarChrome(0.12) : toolbarChrome(0.03))
         )
         .foregroundStyle(isActive ? .primary : .secondary)
         .contentShape(Rectangle())
@@ -615,7 +636,7 @@ struct SettingsView: View {
                                 .frame(width: 18, height: 18)
                                 .overlay(
                                     Circle()
-                                        .strokeBorder(Color.white.opacity(isActive ? 0.9 : 0),
+                                        .strokeBorder(Color.primary.opacity(isActive ? 0.9 : 0),
                                                       lineWidth: 1.5)
                                         .padding(-2)
                                 )
@@ -643,7 +664,7 @@ struct SettingsView: View {
                         .clipShape(Circle())
                         .overlay(
                             Circle()
-                                .strokeBorder(Color.white.opacity(isCustom ? 0.9 : 0),
+                                .strokeBorder(Color.primary.opacity(isCustom ? 0.9 : 0),
                                               lineWidth: 1.5)
                                 .padding(-2)
                         )
@@ -731,7 +752,7 @@ struct SettingsView: View {
                                 .frame(width: 34, height: 28)
                                 .background(
                                     RoundedRectangle(cornerRadius: 5)
-                                        .fill(isActive ? Color.white.opacity(0.12) : Color.white.opacity(0.02))
+                                        .fill(isActive ? Color.primary.opacity(0.12) : Color.primary.opacity(0.02))
                                 )
                         }
                         .buttonStyle(.plain)
@@ -921,7 +942,7 @@ struct HexColorPicker: View {
             RoundedRectangle(cornerRadius: 4)
                 .fill(SwiftUI.Color(color))
                 .frame(width: 24, height: 24)
-                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.white.opacity(0.15), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
 
             // Hex field
             HStack(spacing: 4) {
@@ -950,7 +971,7 @@ struct HexColorPicker: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.07)))
+            .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.07)))
         }
     }
 }
