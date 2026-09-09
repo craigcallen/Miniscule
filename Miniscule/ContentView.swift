@@ -457,6 +457,26 @@ struct ContentView: View {
     private var toolbarPrimary: SwiftUI.Color { toolbarChrome(0.85) }
     private var toolbarSecondary: SwiftUI.Color { toolbarChrome(0.5) }
 
+    /// Bakes `color` into an SF Symbol's pixels and marks it non-template.
+    /// `Menu`'s borderless-button label on macOS ignores `.foregroundStyle`
+    /// and always recolors template images to the system label color, so a
+    /// plain `Image(systemName:)` inside `openButton`'s dropdown case would
+    /// keep flipping to system-appearance black/white instead of matching
+    /// the terminal theme. Pre-tinting sidesteps that recoloring entirely.
+    private func tintedSymbol(_ name: String, pointSize: CGFloat, weight: NSFont.Weight, color: SwiftUI.Color) -> NSImage {
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+        guard let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config) else { return NSImage() }
+        let tinted = NSImage(size: symbol.size, flipped: false) { rect in
+            NSColor(color).set()
+            rect.fill()
+            symbol.draw(in: rect, from: .zero, operation: .destinationIn, fraction: 1.0)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
+    }
+
     private func focusActiveTab() {
         DispatchQueue.main.async {
             let tv = store.activeTab.terminalView
@@ -583,15 +603,15 @@ struct ContentView: View {
     private var openButton: some View {
         let installed = store.installedTerminals
         if !installed.isEmpty {
+            let openIcon = tintedSymbol("arrow.up.right.square", pointSize: 10, weight: .medium, color: toolbarSecondary)
             if installed.count == 1 {
                 Button { store.openCurrentDirectory(in: installed[0]) } label: {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 10, weight: .medium))
+                    Image(nsImage: openIcon)
+                        .renderingMode(.original)
                         .frame(width: 26, height: 28)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(toolbarSecondary)
                 .help("Open in \(installed[0].name)")
             } else {
                 Menu {
@@ -599,14 +619,13 @@ struct ContentView: View {
                         Button(app.name) { store.openCurrentDirectory(in: app) }
                     }
                 } label: {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 10, weight: .medium))
+                    Image(nsImage: openIcon)
+                        .renderingMode(.original)
                         .frame(width: 26, height: 28)
                         .contentShape(Rectangle())
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .foregroundStyle(toolbarSecondary)
                 .help("Open in terminal…")
             }
             toolbarDivider

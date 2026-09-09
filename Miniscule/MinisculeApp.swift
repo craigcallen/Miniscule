@@ -50,8 +50,11 @@ struct MinisculeApp: App {
         .menuBarExtraStyle(.window)
     }
 
+    /// Fixed white icon: the status item shows this against its own dark
+    /// highlight pill while the window is open, which a system-appearance
+    /// template image (black in light mode) would disappear into.
     private var menuBarIcon: NSImage {
-        guard let icon = NSImage(named: "Miniscule Menu Icon") else {
+        guard let icon = NSImage(named: "Miniscule Menu Icon White") else {
             return NSImage(systemSymbolName: "terminal", accessibilityDescription: nil) ?? NSImage()
         }
         let size = NSSize(width: 18, height: 18)
