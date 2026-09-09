@@ -444,7 +444,7 @@ struct ContentView: View {
             icon.draw(in: rect, from: .zero, operation: .copy, fraction: 1.0)
             return true
         }
-        scaled.isTemplate = false
+        scaled.isTemplate = true
         return scaled
     }
 
@@ -453,6 +453,9 @@ struct ContentView: View {
     private func toolbarChrome(_ opacity: Double) -> SwiftUI.Color {
         (store.isLightBackground ? SwiftUI.Color.black : SwiftUI.Color.white).opacity(opacity)
     }
+
+    private var toolbarPrimary: SwiftUI.Color { toolbarChrome(0.85) }
+    private var toolbarSecondary: SwiftUI.Color { toolbarChrome(0.5) }
 
     private func focusActiveTab() {
         DispatchQueue.main.async {
@@ -471,13 +474,13 @@ struct ContentView: View {
             // App icon + title
             HStack(spacing: 5) {
                 Image(nsImage: toolbarIcon)
-                    .renderingMode(.original)
+                    .renderingMode(.template)
                 if !mini {
                     Text("Miniscule")
                         .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 }
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(toolbarSecondary)
             .padding(.leading, 10)
             .padding(.trailing, 6)
 
@@ -496,7 +499,7 @@ struct ContentView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(toolbarSecondary)
             .help("New Tab")
             .padding(.leading, 2)
 
@@ -513,7 +516,7 @@ struct ContentView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(pinController.isPinned ? Color.accentColor : Color.secondary)
+            .foregroundStyle(pinController.isPinned ? Color.accentColor : toolbarSecondary)
             .help(pinController.isPinned
                   ? "Unlock — Miniscule hides when you click away"
                   : "Lock — keep Miniscule on top of other windows")
@@ -526,7 +529,7 @@ struct ContentView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(toolbarSecondary)
             .help("Settings")
             .popover(isPresented: $showSettings, arrowEdge: .top) {
                 SettingsView()
@@ -570,7 +573,7 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 5)
                 .fill(isActive ? toolbarChrome(0.12) : toolbarChrome(0.03))
         )
-        .foregroundStyle(isActive ? .primary : .secondary)
+        .foregroundStyle(isActive ? toolbarPrimary : toolbarSecondary)
         .contentShape(Rectangle())
         .onTapGesture { store.activeTabIndex = index }
         .animation(.spring(duration: 0.2), value: isActive)
@@ -588,7 +591,7 @@ struct ContentView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(toolbarSecondary)
                 .help("Open in \(installed[0].name)")
             } else {
                 Menu {
@@ -603,7 +606,7 @@ struct ContentView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(toolbarSecondary)
                 .help("Open in terminal…")
             }
             toolbarDivider
