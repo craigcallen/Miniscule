@@ -162,4 +162,12 @@ extension NSColor {
             alpha: 1
         )
     }
+
+    /// True if this color reads as light — used to pick chrome that stays visible
+    /// against an arbitrary theme background, independent of system light/dark mode.
+    var isLightColor: Bool {
+        guard let rgb = usingColorSpace(.sRGB) else { return false }
+        let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
+        return luminance > 0.5
+    }
 }
