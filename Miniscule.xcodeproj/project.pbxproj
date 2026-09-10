@@ -344,10 +344,10 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		C3A8F1B2D4E567890A012345 /* XCRemoteSwiftPackageReference "SwiftTerm" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/migueldeicaza/SwiftTerm";
+			repositoryURL = "https://github.com/craigcallen/SwiftTerm";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
+				kind = branch;
+				branch = "termbar/overlay-scroller";
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
