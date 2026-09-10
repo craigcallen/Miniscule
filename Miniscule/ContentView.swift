@@ -458,6 +458,13 @@ struct ContentView: View {
     private var toolbarPrimary: SwiftUI.Color { toolbarChrome(0.85) }
     private var toolbarSecondary: SwiftUI.Color { toolbarChrome(0.5) }
 
+    /// Theme-derived accent (bright cyan, ANSI index 14) for the toolbar's one
+    /// stateful control — using `Color.accentColor` here would tie it to the
+    /// user's system accent instead of the active terminal theme.
+    private var toolbarAccent: SwiftUI.Color {
+        SwiftUI.Color(NSColor(hex: store.currentTheme.ansi16[14]))
+    }
+
     /// Bakes `color` into an SF Symbol's pixels and marks it non-template.
     /// `Menu`'s borderless-button label on macOS ignores `.foregroundStyle`
     /// and always recolors template images to the system label color, so a
@@ -488,83 +495,78 @@ struct ContentView: View {
     // MARK: Toolbar
 
     private var toolbar: some View {
-        let ts   = store.windowSize.terminalSize
-        let mini = store.windowSize == .mini
+        let ts = store.windowSize.terminalSize
         return HStack(spacing: 0) {
 
-            // App icon + title
-            HStack(spacing: 5) {
-                Image(nsImage: toolbarIcon)
-                    .renderingMode(.template)
-                if !mini {
-                    Text("Miniscule")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                }
-            }
-            .foregroundStyle(toolbarSecondary)
-            .padding(.leading, 10)
-            .padding(.trailing, 6)
+            // Identity
+            Image(nsImage: toolbarIcon)
+                .renderingMode(.template)
+                .foregroundStyle(toolbarSecondary)
+                .padding(.leading, 8)
+                .padding(.trailing, 12)
 
-            // Tabs
+            // Workspace
             HStack(spacing: 2) {
                 ForEach(Array(store.tabs.enumerated()), id: \.element.id) { index, tab in
                     tabPill(index: index, tab: tab)
                 }
+
+                Button { store.addTab() } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 9, weight: .bold))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(toolbarSecondary)
+                .help("New Tab")
             }
 
-            // New tab
-            Button { store.addTab() } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 9, weight: .bold))
-                    .frame(width: 24, height: 28)
-                    .contentShape(Rectangle())
+            Spacer(minLength: 12)
+
+            // Actions
+            HStack(spacing: 2) {
+                openButton
+
+                Button { pinController.isPinned.toggle() } label: {
+                    Image(systemName: pinController.isPinned ? "lock.fill" : "lock.open")
+                        .font(.system(size: 10, weight: .medium))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(pinController.isPinned ? toolbarAccent : toolbarSecondary)
+                .help(pinController.isPinned
+                      ? "Unlock — Miniscule hides when you click away"
+                      : "Lock — keep Miniscule on top of other windows")
+
+                Button { showSettings.toggle() } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 10, weight: .medium))
+                        .frame(width: 26, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(toolbarSecondary)
+                .help("Settings")
+                .popover(isPresented: $showSettings, arrowEdge: .top) {
+                    SettingsView()
+                        .environment(store)
+                }
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(toolbarSecondary)
-            .help("New Tab")
-            .padding(.leading, 2)
-
-            Spacer(minLength: 4)
-
-            // Open in external terminal
-            openButton
-
-            // Lock (keep window on top)
-            Button { pinController.isPinned.toggle() } label: {
-                Image(systemName: pinController.isPinned ? "lock.fill" : "lock.open")
-                    .font(.system(size: 10, weight: .medium))
-                    .frame(width: 26, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(pinController.isPinned ? Color.accentColor : toolbarSecondary)
-            .help(pinController.isPinned
-                  ? "Unlock — Miniscule hides when you click away"
-                  : "Lock — keep Miniscule on top of other windows")
-
-            // Settings
-            Button { showSettings.toggle() } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 10, weight: .medium))
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(toolbarSecondary)
-            .help("Settings")
-            .popover(isPresented: $showSettings, arrowEdge: .top) {
-                SettingsView()
-                    .environment(store)
-            }
-
-            Spacer().frame(width: 4)
+            .padding(.trailing, 8)
         }
         .frame(width: ts.width, height: 36)
         .background {
             let bg = store.currentTheme.id == "custom"
                 ? store.customBackground
                 : store.currentTheme.background
-            Color(bg).opacity(max(store.backgroundOpacity, 0.15))
+            Color(bg.lightened(by: 0.05))
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(toolbarChrome(0.08))
+                .frame(height: 1)
         }
     }
 
@@ -592,9 +594,13 @@ struct ContentView: View {
         .frame(height: 22)
         .background(
             RoundedRectangle(cornerRadius: 5)
-                .fill(isActive ? toolbarChrome(0.12) : toolbarChrome(0.03))
+                .fill(isActive ? toolbarChrome(0.12) : .clear)
         )
-        .foregroundStyle(isActive ? toolbarPrimary : toolbarSecondary)
+        .overlay(
+            RoundedRectangle(cornerRadius: 5)
+                .strokeBorder(isActive ? toolbarChrome(0.14) : .clear, lineWidth: 1)
+        )
+        .foregroundStyle(isActive ? toolbarPrimary : toolbarChrome(0.45))
         .contentShape(Rectangle())
         .onTapGesture { store.activeTabIndex = index }
         .animation(.spring(duration: 0.2), value: isActive)
@@ -609,7 +615,7 @@ struct ContentView: View {
                 Button { store.openCurrentDirectory(in: installed[0]) } label: {
                     Image(nsImage: openIcon)
                         .renderingMode(.original)
-                        .frame(width: 26, height: 28)
+                        .frame(width: 26, height: 26)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -629,7 +635,7 @@ struct ContentView: View {
                         Image(nsImage: chevronIcon)
                             .renderingMode(.original)
                     }
-                    .frame(width: 34, height: 28)
+                    .frame(width: 34, height: 26)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -654,14 +660,7 @@ struct ContentView: View {
                     .padding(.vertical, 4)
                 }
             }
-            toolbarDivider
         }
-    }
-
-    private var toolbarDivider: some View {
-        Divider()
-            .frame(height: 14)
-            .padding(.horizontal, 4)
     }
 }
 
