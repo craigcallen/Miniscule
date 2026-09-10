@@ -170,4 +170,16 @@ extension NSColor {
         let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
         return luminance > 0.5
     }
+
+    /// Additively lightens each channel — used to give toolbar chrome a plane
+    /// distinct from the terminal surface it sits on.
+    func lightened(by fraction: CGFloat) -> NSColor {
+        guard let rgb = usingColorSpace(.sRGB) else { return self }
+        return NSColor(
+            red: min(rgb.redComponent + fraction, 1),
+            green: min(rgb.greenComponent + fraction, 1),
+            blue: min(rgb.blueComponent + fraction, 1),
+            alpha: rgb.alphaComponent
+        )
+    }
 }
