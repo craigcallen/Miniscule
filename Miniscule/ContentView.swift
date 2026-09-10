@@ -392,6 +392,7 @@ private struct WindowAccessor: NSViewRepresentable {
 struct ContentView: View {
     @Environment(TerminalStore.self) var store
     @State private var showSettings = false
+    @State private var showOpenMenu = false
     @State private var pinController = WindowPinController()
 
     var body: some View {
@@ -614,19 +615,44 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .help("Open in \(installed[0].name)")
             } else {
-                Menu {
-                    ForEach(installed) { app in
-                        Button(app.name) { store.openCurrentDirectory(in: app) }
+                // A SwiftUI `Menu` draws its own disclosure chevron via
+                // AppKit's NSPopUpButton cell, which — like `Menu`'s label —
+                // ignores `.foregroundStyle` and always renders in the
+                // system label color. Building the dropdown from a plain
+                // `Button` + `.popover` instead lets us draw a chevron from
+                // the same pre-tinted-pixels path as the rest of the toolbar.
+                let chevronIcon = tintedSymbol("chevron.down", pointSize: 7, weight: .bold, color: toolbarSecondary)
+                Button { showOpenMenu.toggle() } label: {
+                    HStack(spacing: 2) {
+                        Image(nsImage: openIcon)
+                            .renderingMode(.original)
+                        Image(nsImage: chevronIcon)
+                            .renderingMode(.original)
                     }
-                } label: {
-                    Image(nsImage: openIcon)
-                        .renderingMode(.original)
-                        .frame(width: 26, height: 28)
-                        .contentShape(Rectangle())
+                    .frame(width: 34, height: 28)
+                    .contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
+                .buttonStyle(.plain)
                 .help("Open in terminal…")
+                .popover(isPresented: $showOpenMenu, arrowEdge: .top) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(installed) { app in
+                            Button {
+                                store.openCurrentDirectory(in: app)
+                                showOpenMenu = false
+                            } label: {
+                                Text(app.name)
+                                    .font(.system(size: 12))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                        }
+                    }
+                    .frame(minWidth: 160)
+                    .padding(.vertical, 4)
+                }
             }
             toolbarDivider
         }
