@@ -689,7 +689,7 @@ struct WelcomeView: View {
 
             VStack(spacing: 20) {
                 Image(nsImage: {
-                    guard let icon = NSImage(named: "Miniscule Menu Icon") else {
+                    guard let icon = NSImage(named: "Miniscule Menu Icon White") else {
                         return NSImage(systemSymbolName: "terminal.fill", accessibilityDescription: nil) ?? NSImage()
                     }
                     let size = NSSize(width: 72, height: 72)
